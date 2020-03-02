@@ -1,6 +1,6 @@
 spring:
   application:
-    name: strava-oauth2
+    name: strava-weekly
   jpa:
     database-platform: org.hibernate.dialect.MySQL5Dialect
   main:
@@ -15,11 +15,11 @@ security:
       # For client id and secret, refer to:
       # https://www.strava.com/settings/api
       # Instead of setting here, see README.md to set as command line arguments
-      client-id: #SECRET, DO NOT COMMIT TO REPOSITORY
-      client-secret: #SECRET, DO NOT COMMIT TO REPOSITORY
+      client-id: ${CLIENT_ID} #SECRET, DO NOT COMMIT TO REPOSITORY
+      client-secret: ${CLIENT_SECRET} #SECRET, DO NOT COMMIT TO REPOSITORY
       access-token-uri: https://www.strava.com/oauth/token
       user-authorization-uri: https://www.strava.com/oauth/authorize
-      scope: view_private
+      scope: activity:read_all
       token-name: access_token
       authentication-scheme: query
       client-authentication-scheme: form

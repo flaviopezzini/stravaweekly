@@ -9,7 +9,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 @SpringBootApplication
 @EnableOAuth2Sso
-public class StravaOauth2Application extends WebSecurityConfigurerAdapter {
+public class StravaWeeklyApplication extends WebSecurityConfigurerAdapter {
 
   @Override
   protected void configure(HttpSecurity http) throws Exception {
@@ -22,7 +22,7 @@ public class StravaOauth2Application extends WebSecurityConfigurerAdapter {
   }
 
   public static void main(String[] args) {
-    SpringApplication.run(StravaOauth2Application.class, args);
+    SpringApplication.run(StravaWeeklyApplication.class, args);
   }
 
 }

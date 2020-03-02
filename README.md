@@ -1,4 +1,4 @@
-# strava-oauth2
+# strava-weekly
 
 # Configuration
 

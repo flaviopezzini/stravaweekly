@@ -27,10 +27,39 @@
 
     <h1>Strava</h1>
 
-    Logged in with access token: <span id="user"></span>
+    <input type="hidden" id="user" value="" />
 
     <div>
+      <input type="checkbox" id="measurementSystem">Show metric? <br/>
+
+      <button onClick="listActivities()" class="btn btn-primary">Activities</button>
+
       <button onClick="logout()" class="btn btn-primary">Logout</button>
+    </div>
+
+    <br/>
+
+    <h1>Weekly</h1>
+
+    <div class="container-fluid" id="weeklyGrid">
+      <div class="row header">
+        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
+          <b>Name</b>
+        </div>
+        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
+          <b>Distance</b>
+        </div>
+        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
+          <b>Duration</b>
+        </div>
+        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
+          <b>Elevation Gain</b>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h1>Total distance: <span id="totalDistance"></span></h1>
     </div>
 
     <script type="text/javascript"
@@ -43,7 +72,8 @@
     $.ajaxSetup({
       beforeSend: function(xhr, settings) {
 
-        if (settings.type == 'POST' ||
+        if (settings.type == 'GET' ||
+            settings.type == 'POST' ||
             settings.type == 'PUT' ||
             settings.type == 'DELETE') {
 
@@ -52,6 +82,8 @@
 
             // Only send the token to relative URLs i.e. locally.
             xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
+
+            xhr.setRequestHeader("Authorization", "Bearer " + $("#user").val());
           }
         }
       }
@@ -59,7 +91,7 @@
 
     $.get("/athleteToken", function(data) {
 
-      $("#user").html(data.accessToken);
+      $("#user").val(data.accessToken);
       $(".unauthenticated").hide();
       $(".authenticated").show();
     });
@@ -67,9 +99,76 @@
     var logout = function() {
 
       $.post("/logout", function() {
-        $("#user").html('');
+        $("#user").val('');
         $(".unauthenticated").show();
         $(".authenticated").hide();
+      });
+
+      return true;
+    }
+
+    var formatDuration = function (seconds) {
+      var sec_num = parseInt(seconds, 10); // don't forget the second param
+      var hours   = Math.floor(sec_num / 3600);
+      var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+      var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+      if (hours   < 10) {hours   = "0"+hours;}
+      if (minutes < 10) {minutes = "0"+minutes;}
+      if (seconds < 10) {seconds = "0"+seconds;}
+      return hours+':'+minutes+':'+seconds;
+    }
+
+    var listActivities = function() {
+
+      $.get("/athlete/activities", function(data) {
+
+        var weeklyGrid = $("#weeklyGrid");
+
+        $("#weeklyGrid .row:not(.header)").remove();
+
+        var totalDistanceEl = $("#totalDistance");
+
+        var useMetric = $("input[type=checkbox]").is(":checked");
+
+        var totalDistance = 0;
+
+        data.forEach(activity => {
+          var row = $("<div></div>");
+          row.addClass("row");
+          weeklyGrid.append(row);
+
+          var classToAdd = "col-sm-3 col-md-3 col-lg-3 col-xl-3";
+
+          var col1 = $("<div></div>").html(activity.name);
+          col1.addClass(classToAdd);
+          row.append(col1);
+
+          var distance;
+          
+          if (useMetric) {
+            distance = activity.distance / 1000;
+          } else {
+            distance = activity.distance / 1609;
+          }
+          distance = distance.toFixed(1);
+          totalDistance += parseFloat(distance);
+
+          var col2 = $("<div></div>").html(distance);
+          col2.addClass(classToAdd);
+          row.append(col2);
+
+          var col3 = $("<div></div>").html(formatDuration(activity.moving_time));
+          col3.addClass(classToAdd);
+          row.append(col3);
+
+          var col4 = $("<div></div>").html(activity.total_elevation_gain);
+          col4.addClass(classToAdd);
+          row.append(col4);
+
+        });
+
+        totalDistanceEl.html(totalDistance.toFixed(1));
       });
 
       return true;

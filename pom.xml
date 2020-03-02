@@ -9,10 +9,10 @@
     <relativePath/> <!-- lookup parent from repository -->
   </parent>
   <groupId>com.jinpalhawang</groupId>
-  <artifactId>strava-oauth2</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>strava-oauth2</name>
-  <description>Demo project for Spring Boot</description>
+  <artifactId>strava-weekly</artifactId>
+  <version>0.0.1</version>
+  <name>strava-weekly</name>
+  <description>Integratiom with the Strava API</description>
 
   <properties>
     <java.version>1.8</java.version>

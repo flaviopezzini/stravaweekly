@@ -1,8 +1,7 @@
-package stravaoauth2.example;
+package stravaweekly.activity;
 
 import java.security.Principal;
 import java.time.*;
-import java.time.temporal.TemporalUnit;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,10 +11,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationDetails;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-
-// https://stackoverflow.com/questions/19238715/how-to-set-an-accept-header-on-spring-resttemplate-request
 
 @RestController
 public class ActivityController {
@@ -23,22 +21,35 @@ public class ActivityController {
   @GetMapping("/athlete/clubs")
   public ResponseEntity<String> athleteClubs(
       final @AuthenticationPrincipal Principal principal) {
-
-    final String url = "https://www.strava.com/api/v3/athlete/clubs";
-
+      final String url = "https://www.strava.com/api/v3/athlete/clubs";
     return sendGetRequest(principal, url);
   }
 
   @GetMapping("/athlete/activities")
-  public ResponseEntity<String> athleteActivities(
-      final @AuthenticationPrincipal Principal principal) {
+  public ResponseEntity<String> listAthleteActivities(
+          final @AuthenticationPrincipal Principal principal,
+          @RequestParam("userTimezoneOffsetInHours") int userTimezoneOffsetInHours) {
 
-    LocalDateTime weekAgo = LocalDateTime.now().minusDays(7);
-    ZonedDateTime zonedWeekAgo = ZonedDateTime.of(weekAgo, ZoneId.systemDefault());
+    LocalDateTime now = LocalDateTime.now();
+
+    // 1-Mon, 2-Tue, 3-Wed, 4-Thu, 5-Fri, 6-Sat, 7-Sun
+    int dayOfWeek = now.getDayOfWeek().getValue();
+    LocalDateTime end;
+    if (now.getDayOfWeek().equals(DayOfWeek.SUNDAY)) {
+      end = now;
+    } else {
+      end = now.minusDays(dayOfWeek);
+    }
+    LocalDateTime start = end.minusDays(7);
+
+    ZoneId userZoneId = ZoneId.ofOffset("", ZoneOffset.ofHours(userTimezoneOffsetInHours));
+
+    ZonedDateTime zonedStart = ZonedDateTime.of(start, userZoneId);
+    ZonedDateTime zonedEnd = ZonedDateTime.of(end, userZoneId);
 
     final String url = String.format("https://www.strava.com/api/v3/athlete/activities?before=%s&after=%s",
-            (Instant.now().toEpochMilli() / 1000),
-            (zonedWeekAgo.toInstant().toEpochMilli()) / 1000);
+            (zonedEnd.toInstant().toEpochMilli() / 1000),
+            (zonedStart.toInstant().toEpochMilli() / 1000));
 
     return sendGetRequest(principal, url);
   }

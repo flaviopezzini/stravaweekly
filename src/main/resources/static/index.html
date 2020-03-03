@@ -41,22 +41,31 @@
 
     <h1>Weekly</h1>
 
-    <div class="container-fluid" id="weeklyGrid">
-      <div class="row header">
-        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
-          <b>Name</b>
-        </div>
-        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
-          <b>Distance</b>
-        </div>
-        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
-          <b>Duration</b>
-        </div>
-        <div class="col-sm-3 col-md-3 col-lg-3 col-xl-3">
-          <b>Elevation Gain</b>
-        </div>
-      </div>
-    </div>
+    <table id="weeklyGrid" class="table table-bordered">
+      <thead>
+        <th scope="col">
+          Date
+        </th>
+        <th scope="col">
+          Name
+        </th>
+        <th scope="col">
+          Distance
+        </th>
+        <th scope="col">
+          Duration
+        </th>
+        <th scope="col">
+          Average Pace
+        </th>
+        <th scope="col">
+          Elevation Gain
+        </th>
+        <th scope="col">
+          Link to Strava Activity
+        </th>
+      </thead>
+    </table>
 
     <div>
       <h1>Total distance: <span id="totalDistance"></span></h1>
@@ -121,11 +130,15 @@
 
     var listActivities = function() {
 
-      $.get("/athlete/activities", function(data) {
+      var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
+
+      var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
+
+      $.get(listAthleteActivitiesUrl, function(data) {
 
         var weeklyGrid = $("#weeklyGrid");
 
-        $("#weeklyGrid .row:not(.header)").remove();
+        $("table tbody tr").remove();
 
         var totalDistanceEl = $("#totalDistance");
 
@@ -134,38 +147,60 @@
         var totalDistance = 0;
 
         data.forEach(activity => {
-          var row = $("<div></div>");
-          row.addClass("row");
+          var row = $("<tr></tr>");
           weeklyGrid.append(row);
 
-          var classToAdd = "col-sm-3 col-md-3 col-lg-3 col-xl-3";
+          var duration = activity.moving_time;
 
-          var col1 = $("<div></div>").html(activity.name);
-          col1.addClass(classToAdd);
-          row.append(col1);
-
+          var activityDate;
           var distance;
           
           if (useMetric) {
+            activityDate = 
+              activity.start_date_local.substring(8,10) + "/" + 
+              activity.start_date_local.substring(5,7) + "/" + 
+              activity.start_date_local.substring(0,4);
             distance = activity.distance / 1000;
           } else {
+            activityDate = 
+              activity.start_date_local.substring(5,7) + "/" + 
+              activity.start_date_local.substring(8,10) + "/" + 
+              activity.start_date_local.substring(0,4);
             distance = activity.distance / 1609;
           }
+
           distance = distance.toFixed(1);
-          totalDistance += parseFloat(distance);
+          var floatDistance = parseFloat(distance);
+          totalDistance += floatDistance;
+          var averagePaceInSeconds = duration / floatDistance;
+          averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
+          var averagePace = formatDuration(averagePaceInSeconds);
 
-          var col2 = $("<div></div>").html(distance);
-          col2.addClass(classToAdd);
-          row.append(col2);
+          var colDate = $("<td></td>").html(activityDate);
+          row.append(colDate);
 
-          var col3 = $("<div></div>").html(formatDuration(activity.moving_time));
-          col3.addClass(classToAdd);
-          row.append(col3);
+          var colName = $("<td></td>").html(activity.name);
+          row.append(colName);
 
-          var col4 = $("<div></div>").html(activity.total_elevation_gain);
-          col4.addClass(classToAdd);
-          row.append(col4);
+          var colDistance = $("<td></td>").html(distance);
+          row.append(colDistance);
 
+          var colDuration = $("<td></td>").html(formatDuration(duration));
+          row.append(colDuration);
+
+          var colAveragePace = $("<td></td>").html(averagePace);
+          row.append(colAveragePace);
+
+          var colElevation = $("<td></td>").html(activity.total_elevation_gain);
+          row.append(colElevation);
+
+          var activityUrl = $("<a></a>").html("Link");
+          activityUrl.prop("href", "https://www.strava.com/activities/" + activity.id);
+          activityUrl.prop("target", "_blank");
+
+          var colLink = $("<td></td>");
+          colLink.append(activityUrl);
+          row.append(colLink);
         });
 
         totalDistanceEl.html(totalDistance.toFixed(1));

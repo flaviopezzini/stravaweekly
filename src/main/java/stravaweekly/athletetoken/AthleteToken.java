@@ -1,4 +1,4 @@
-package stravaoauth2.athletetoken;
+package stravaweekly.athletetoken;
 
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;

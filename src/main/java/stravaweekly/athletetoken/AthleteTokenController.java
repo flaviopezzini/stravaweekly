@@ -1,4 +1,4 @@
-package stravaoauth2.athletetoken;
+package stravaweekly.athletetoken;
 
 import java.security.Principal;
 import java.util.List;

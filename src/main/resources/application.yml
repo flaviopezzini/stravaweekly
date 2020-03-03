@@ -7,7 +7,9 @@ spring:
     allow-bean-definition-overriding: true # TODO: Find how to remove this
 
 server:
-  port: 8091
+  error:
+    whitelabel:
+      enabled: false
 
 security:
   oauth2:

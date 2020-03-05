@@ -65,6 +65,9 @@
           Link to Strava Activity
         </th>
       </thead>
+      <tbody id="weeklyGridBody">
+
+      </tbody>
     </table>
 
     <div>
@@ -92,25 +95,35 @@
             // Only send the token to relative URLs i.e. locally.
             xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
 
-            xhr.setRequestHeader("Authorization", "Bearer " + $("#user").val());
+            xhr.setRequestHeader("Authorization", "Bearer " + document.querySelector("#user").value);
           }
         }
       }
     });
 
+    // pending to figure out how to go around the cors issue
+    // fetch("/athleteToken")
+    //   .then(data => {
+    //     document.querySelector("#user").value = data.accessToken;
+    //     document.querySelector(".unauthenticated").style.display = "none";
+    //     document.querySelector(".authenticated").style.display = "block";
+    //   }).catch(error => {
+    //     console.log("Error retrieving token: " + error);
+    //   });
+
     $.get("/athleteToken", function(data) {
 
-      $("#user").val(data.accessToken);
-      $(".unauthenticated").hide();
-      $(".authenticated").show();
+      document.querySelector("#user").value = data.accessToken;
+      document.querySelector(".unauthenticated").style.display = "none";
+      document.querySelector(".authenticated").style.display = "block";
     });
 
     var logout = function() {
 
       $.post("/logout", function() {
-        $("#user").val('');
-        $(".unauthenticated").show();
-        $(".authenticated").hide();
+        document.querySelector("#user").value = "";
+        document.querySelector(".unauthenticated").style.display = "block";
+        document.querySelector(".authenticated").style.display = "none";
       });
 
       return true;
@@ -136,19 +149,18 @@
 
       $.get(listAthleteActivitiesUrl, function(data) {
 
-        var weeklyGrid = $("#weeklyGrid");
+        var weeklyGridBody = document.querySelector("#weeklyGridBody");
+        weeklyGridBody.innerHTML = "";
 
-        $("table tbody tr").remove();
+        var totalDistanceEl = document.querySelector("#totalDistance");
 
-        var totalDistanceEl = $("#totalDistance");
-
-        var useMetric = $("input[type=checkbox]").is(":checked");
+        var useMetric = document.querySelector("input[type=checkbox]").checked;
 
         var totalDistance = 0;
 
         data.forEach(activity => {
-          var row = $("<tr></tr>");
-          weeklyGrid.append(row);
+          var row = document.createElement("tr");
+          weeklyGridBody.appendChild(row);
 
           var duration = activity.moving_time;
 
@@ -176,34 +188,41 @@
           averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
           var averagePace = formatDuration(averagePaceInSeconds);
 
-          var colDate = $("<td></td>").html(activityDate);
-          row.append(colDate);
+          var colDate = document.createElement("td");
+          colDate.textContent = activityDate;
+          row.appendChild(colDate);
 
-          var colName = $("<td></td>").html(activity.name);
-          row.append(colName);
+          var colName = document.createElement("td");
+          colName.textContent = activity.name;
+          row.appendChild(colName);
 
-          var colDistance = $("<td></td>").html(distance);
-          row.append(colDistance);
+          var colDistance = document.createElement("td");
+          colDistance.textContent = distance;
+          row.appendChild(colDistance);
 
-          var colDuration = $("<td></td>").html(formatDuration(duration));
-          row.append(colDuration);
+          var colDuration = document.createElement("td");
+          colDuration.textContent = formatDuration(duration);
+          row.appendChild(colDuration);
 
-          var colAveragePace = $("<td></td>").html(averagePace);
-          row.append(colAveragePace);
+          var colAveragePace = document.createElement("td");
+          colAveragePace.textContent = averagePace;
+          row.appendChild(colAveragePace);
 
-          var colElevation = $("<td></td>").html(activity.total_elevation_gain);
-          row.append(colElevation);
+          var colElevation = document.createElement("td");
+          colElevation.textContent = activity.total_elevation_gain;
+          row.appendChild(colElevation);
 
-          var activityUrl = $("<a></a>").html("Link");
-          activityUrl.prop("href", "https://www.strava.com/activities/" + activity.id);
-          activityUrl.prop("target", "_blank");
+          var activityUrl = document.createElement("a");
+          activityUrl.textContent = "Link";
+          activityUrl.href = "https://www.strava.com/activities/" + activity.id;
+          activityUrl.target= "_blank";
 
-          var colLink = $("<td></td>");
-          colLink.append(activityUrl);
-          row.append(colLink);
+          var colLink = document.createElement("td");
+          colLink.appendChild(activityUrl);
+          row.appendChild(colLink);
         });
 
-        totalDistanceEl.html(totalDistance.toFixed(1));
+        totalDistanceEl.textContent = totalDistance.toFixed(1);
       });
 
       return true;

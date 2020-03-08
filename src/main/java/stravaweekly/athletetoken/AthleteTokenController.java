@@ -4,20 +4,23 @@ import java.security.Principal;
 import java.util.List;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.provider.OAuth2Authentication;
-import org.springframework.security.oauth2.provider.authentication.OAuth2AuthenticationDetails;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import lombok.RequiredArgsConstructor;
+import stravaweekly.rest.RequestService;
 
 // https://stackoverflow.com/questions/27864295/how-to-use-oauth2resttemplate
 
 @RestController
-@RequiredArgsConstructor
 public class AthleteTokenController {
 
   private final AthleteTokenRepository athleteTokenRepository;
+  private final RequestService requestService;
+
+  public AthleteTokenController(AthleteTokenRepository athleteTokenRepository, RequestService requestService) {
+    this.athleteTokenRepository = athleteTokenRepository;
+    this.requestService = requestService;
+  }
 
   @RequestMapping("/principal")
   public Principal principal(
@@ -32,23 +35,13 @@ public class AthleteTokenController {
 
     return athleteTokenRepository.save(
         AthleteToken.builder()
-            .accessToken(getAccessToken(principal))
+            .accessToken(requestService.getAccessToken(principal))
             .build());
   }
 
   @RequestMapping("/athleteTokens")
   public List<AthleteToken> athletes() {
     return athleteTokenRepository.findAll();
-  }
-
-  private String getAccessToken(
-      final Principal principal) {
-
-    final OAuth2Authentication oauth2Auth = (OAuth2Authentication) principal;
-    final OAuth2AuthenticationDetails oauth2AuthDetails =
-        (OAuth2AuthenticationDetails) oauth2Auth.getDetails();
-
-    return oauth2AuthDetails.getTokenValue();
   }
 
 }

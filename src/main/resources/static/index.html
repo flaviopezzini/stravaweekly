@@ -10,10 +10,8 @@
   <base href="/" />
   <link rel="stylesheet" type="text/css"
       href="/webjars/bootstrap/css/bootstrap.min.css" />
-  <script type="text/javascript"
-      src="/webjars/jquery/jquery.min.js"></script>
-  <script type="text/javascript"
-      src="/webjars/bootstrap/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="/webjars/jquery/jquery.min.js"></script>
+  <script type="text/javascript" src="/webjars/bootstrap/js/bootstrap.min.js"></script>
 </head>
 
 <body>
@@ -25,12 +23,12 @@
 
   <div class="container authenticated" style="display: none">
 
-    <h1>Strava</h1>
+    <h1>Strava Weekly Generator</h1>
 
     <input type="hidden" id="user" value="" />
 
     <div>
-      <input type="checkbox" id="measurementSystem">Show metric? <br/>
+      <input type="checkbox" id="measurementSystem" onchange="populatePeriod()">Show metric? <br/>
 
       <button onClick="listActivities()" class="btn btn-primary">Activities</button>
 
@@ -39,7 +37,9 @@
 
     <br/>
 
-    <h1>Weekly</h1>
+    <h3>Weekly for period: <span id="period"></span></h3><br/>
+    <p>Start date is the Monday of the week</p>
+    <p>End date is calculated: If today is Sunday, end date is today, else it computes the Sunday before today</p>
 
     <table id="weeklyGrid" class="table table-bordered">
       <thead>
@@ -74,160 +74,202 @@
       <h1>Total distance: <span id="totalDistance"></span></h1>
     </div>
 
-    <script type="text/javascript"
-        src="/webjars/js-cookie/js.cookie.js"></script>
-
   </div>
 
-  <script type="text/javascript">
+<script type="text/javascript" src="/webjars/js-cookie/js.cookie.js"></script>
 
-    $.ajaxSetup({
-      beforeSend: function(xhr, settings) {
+<script type="text/javascript">
+$.ajaxSetup({
+  beforeSend: function(xhr, settings) {
 
-        if (settings.type == 'GET' ||
-            settings.type == 'POST' ||
-            settings.type == 'PUT' ||
-            settings.type == 'DELETE') {
+    if (settings.type == 'GET' ||
+        settings.type == 'POST' ||
+        settings.type == 'PUT' ||
+        settings.type == 'DELETE') {
 
-          if (!(/^http:.*/.test(settings.url) ||
-              /^https:.*/.test(settings.url))) {
+      if (!(/^http:.*/.test(settings.url) ||
+          /^https:.*/.test(settings.url))) {
 
-            // Only send the token to relative URLs i.e. locally.
-            xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
+        // Only send the token to relative URLs i.e. locally.
+        xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
 
-            xhr.setRequestHeader("Authorization", "Bearer " + document.querySelector("#user").value);
-          }
-        }
+        xhr.setRequestHeader("Authorization", "Bearer " + document.querySelector("#user").value);
       }
+    }
+  }
+});
+
+$.get("/athleteToken", function(data) {
+
+  document.querySelector("#user").value = data.accessToken;
+  document.querySelector(".unauthenticated").style.display = "none";
+  document.querySelector(".authenticated").style.display = "block";
+});
+
+var logout = function() {
+
+  $.post("/logout", function() {
+    document.querySelector("#user").value = "";
+    document.querySelector(".unauthenticated").style.display = "block";
+    document.querySelector(".authenticated").style.display = "none";
+  });
+
+  return true;
+}
+
+var formatDuration = function (seconds) {
+  var sec_num = parseInt(seconds, 10); // don't forget the second param
+  var hours   = Math.floor(sec_num / 3600);
+  var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+  var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+  if (hours   < 10) {hours   = "0"+hours;}
+  if (minutes < 10) {minutes = "0"+minutes;}
+  if (seconds < 10) {seconds = "0"+seconds;}
+  return hours+':'+minutes+':'+seconds;
+}
+
+var getDateForSort = function(dateString) {
+  return new Date(dateString.substring(0, dateString.length - 1));
+}
+
+var listActivities = function() {
+
+  var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
+
+  var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
+
+  $.get(listAthleteActivitiesUrl, function(activityList) {
+
+    var weeklyGridBody = document.querySelector("#weeklyGridBody");
+    weeklyGridBody.innerHTML = "";
+
+    var totalDistanceEl = document.querySelector("#totalDistance");
+
+    var useMetric = document.querySelector("input[type=checkbox]").checked;
+
+    var totalDistance = 0;
+
+    var sortedActivities = activityList.sort((a, b) => getDateForSort(a.start_date_local) - getDateForSort(b.start_date_local));
+
+    sortedActivities.forEach(activity => {
+      var row = document.createElement("tr");
+      weeklyGridBody.appendChild(row);
+
+      var duration = activity.moving_time;
+
+      var activityDate;
+      var distance;
+      
+      if (useMetric) {
+        activityDate = 
+          activity.start_date_local.substring(8,10) + "/" + 
+          activity.start_date_local.substring(5,7) + "/" + 
+          activity.start_date_local.substring(0,4);
+        distance = activity.distance / 1000;
+      } else {
+        activityDate = 
+          activity.start_date_local.substring(5,7) + "/" + 
+          activity.start_date_local.substring(8,10) + "/" + 
+          activity.start_date_local.substring(0,4);
+        distance = activity.distance / 1609;
+      }
+
+      distance = distance.toFixed(1);
+      var floatDistance = parseFloat(distance);
+      totalDistance += floatDistance;
+      var averagePaceInSeconds = duration / floatDistance;
+      averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
+      var averagePace = formatDuration(averagePaceInSeconds);
+
+      var colDate = document.createElement("td");
+      colDate.textContent = activityDate;
+      row.appendChild(colDate);
+
+      var colName = document.createElement("td");
+      colName.textContent = activity.name;
+      row.appendChild(colName);
+
+      var colDistance = document.createElement("td");
+      colDistance.textContent = distance;
+      row.appendChild(colDistance);
+
+      var colDuration = document.createElement("td");
+      colDuration.textContent = formatDuration(duration);
+      row.appendChild(colDuration);
+
+      var colAveragePace = document.createElement("td");
+      colAveragePace.textContent = averagePace;
+      row.appendChild(colAveragePace);
+
+      var colElevation = document.createElement("td");
+      colElevation.textContent = activity.total_elevation_gain;
+      row.appendChild(colElevation);
+
+      var activityUrl = document.createElement("a");
+      activityUrl.textContent = "Link";
+      activityUrl.href = "https://www.strava.com/activities/" + activity.id;
+      activityUrl.target= "_blank";
+
+      var colLink = document.createElement("td");
+      colLink.appendChild(activityUrl);
+      row.appendChild(colLink);
     });
 
-    // pending to figure out how to go around the cors issue
-    // fetch("/athleteToken")
-    //   .then(data => {
-    //     document.querySelector("#user").value = data.accessToken;
-    //     document.querySelector(".unauthenticated").style.display = "none";
-    //     document.querySelector(".authenticated").style.display = "block";
-    //   }).catch(error => {
-    //     console.log("Error retrieving token: " + error);
-    //   });
+    totalDistanceEl.textContent = totalDistance.toFixed(1);
+  });
 
-    $.get("/athleteToken", function(data) {
+  return true;
+}
 
-      document.querySelector("#user").value = data.accessToken;
-      document.querySelector(".unauthenticated").style.display = "none";
-      document.querySelector(".authenticated").style.display = "block";
-    });
+var getEndDate = function() {
+  var endDate = new Date();
+  var dayOfWeek = endDate.getDay();
+  if (dayOfWeek != 0) {
+    endDate.setDate(endDate.getDate() - dayOfWeek);
+  }
 
-    var logout = function() {
+  return endDate;
+}
 
-      $.post("/logout", function() {
-        document.querySelector("#user").value = "";
-        document.querySelector(".unauthenticated").style.display = "block";
-        document.querySelector(".authenticated").style.display = "none";
-      });
+var getStartDate = function(endDate) {
+  var startDate = new Date(endDate.getTime());
+  startDate.setDate(startDate.getDate() - 7);
+  return startDate;
+}
 
-      return true;
-    }
+// Without jQuery
+// Define a convenience method and use it
+var ready = (callback) => {
+  if (document.readyState != "loading") callback();
+  else document.addEventListener("DOMContentLoaded", callback);
+}
 
-    var formatDuration = function (seconds) {
-      var sec_num = parseInt(seconds, 10); // don't forget the second param
-      var hours   = Math.floor(sec_num / 3600);
-      var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-      var seconds = sec_num - (hours * 3600) - (minutes * 60);
+var formatPeriodDate = function(date, isMetric) {
+  var day = date.getDate();
+  var month = date.getMonth() + 1;
+  var year = date.getFullYear();
 
-      if (hours   < 10) {hours   = "0"+hours;}
-      if (minutes < 10) {minutes = "0"+minutes;}
-      if (seconds < 10) {seconds = "0"+seconds;}
-      return hours+':'+minutes+':'+seconds;
-    }
+  if (isMetric) {
+    return day + "/" + month + "/" + year;
+  } else {
+    return month + "/" + day + "/" + year;
+  }
+}
 
-    var listActivities = function() {
+var populatePeriod = function() {
+  // populate the period
+  var isMetric = document.querySelector("input[type=checkbox]").checked;
 
-      var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
+  var endDate = getEndDate();
+  document.getElementById("period").innerText = "From " + formatPeriodDate(getStartDate(endDate), isMetric) 
+                                              + " to " + formatPeriodDate(endDate, isMetric);
+}
 
-      var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
-
-      $.get(listAthleteActivitiesUrl, function(data) {
-
-        var weeklyGridBody = document.querySelector("#weeklyGridBody");
-        weeklyGridBody.innerHTML = "";
-
-        var totalDistanceEl = document.querySelector("#totalDistance");
-
-        var useMetric = document.querySelector("input[type=checkbox]").checked;
-
-        var totalDistance = 0;
-
-        data.forEach(activity => {
-          var row = document.createElement("tr");
-          weeklyGridBody.appendChild(row);
-
-          var duration = activity.moving_time;
-
-          var activityDate;
-          var distance;
-          
-          if (useMetric) {
-            activityDate = 
-              activity.start_date_local.substring(8,10) + "/" + 
-              activity.start_date_local.substring(5,7) + "/" + 
-              activity.start_date_local.substring(0,4);
-            distance = activity.distance / 1000;
-          } else {
-            activityDate = 
-              activity.start_date_local.substring(5,7) + "/" + 
-              activity.start_date_local.substring(8,10) + "/" + 
-              activity.start_date_local.substring(0,4);
-            distance = activity.distance / 1609;
-          }
-
-          distance = distance.toFixed(1);
-          var floatDistance = parseFloat(distance);
-          totalDistance += floatDistance;
-          var averagePaceInSeconds = duration / floatDistance;
-          averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-          var averagePace = formatDuration(averagePaceInSeconds);
-
-          var colDate = document.createElement("td");
-          colDate.textContent = activityDate;
-          row.appendChild(colDate);
-
-          var colName = document.createElement("td");
-          colName.textContent = activity.name;
-          row.appendChild(colName);
-
-          var colDistance = document.createElement("td");
-          colDistance.textContent = distance;
-          row.appendChild(colDistance);
-
-          var colDuration = document.createElement("td");
-          colDuration.textContent = formatDuration(duration);
-          row.appendChild(colDuration);
-
-          var colAveragePace = document.createElement("td");
-          colAveragePace.textContent = averagePace;
-          row.appendChild(colAveragePace);
-
-          var colElevation = document.createElement("td");
-          colElevation.textContent = activity.total_elevation_gain;
-          row.appendChild(colElevation);
-
-          var activityUrl = document.createElement("a");
-          activityUrl.textContent = "Link";
-          activityUrl.href = "https://www.strava.com/activities/" + activity.id;
-          activityUrl.target= "_blank";
-
-          var colLink = document.createElement("td");
-          colLink.appendChild(activityUrl);
-          row.appendChild(colLink);
-        });
-
-        totalDistanceEl.textContent = totalDistance.toFixed(1);
-      });
-
-      return true;
-    }
-  </script>
+ready(() => { 
+  populatePeriod();
+});
+</script>
 
 </body>
 

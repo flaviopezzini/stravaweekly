@@ -28,18 +28,18 @@
     <input type="hidden" id="user" value="" />
 
     <div>
-      <input type="checkbox" id="measurementSystem" onchange="populatePeriod()">Show metric? <br/>
+      <input type="checkbox" id="measurementSystem" onchange="handleMetricChange()">Show metric? <br/>
 
-      <button onClick="listActivities()" class="btn btn-primary">Activities</button>
+      <button onClick="listActivities()" class="btn btn-primary">Generate table</button>
 
       <button onClick="logout()" class="btn btn-primary">Logout</button>
     </div>
 
     <br/>
 
-    <h3>Weekly for period: <span id="period"></span></h3><br/>
     <p>Start date is the Monday of the week</p>
     <p>End date is calculated: If today is Sunday, end date is today, else it computes the Sunday before today</p>
+    <h3>Weekly for period: <span id="period"></span></h3><br/>
 
     <table id="weeklyGrid" class="table table-bordered">
       <thead>
@@ -79,6 +79,9 @@
 <script type="text/javascript" src="/webjars/js-cookie/js.cookie.js"></script>
 
 <script type="text/javascript">
+// start this empty so it loads the data the first time
+var sortedActivityListCache = null;
+
 $.ajaxSetup({
   beforeSend: function(xhr, settings) {
 
@@ -117,7 +120,7 @@ var logout = function() {
   return true;
 }
 
-var formatDuration = function (seconds) {
+var formatDuration = function (seconds, showHours) {
   var sec_num = parseInt(seconds, 10); // don't forget the second param
   var hours   = Math.floor(sec_num / 3600);
   var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
@@ -126,33 +129,28 @@ var formatDuration = function (seconds) {
   if (hours   < 10) {hours   = "0"+hours;}
   if (minutes < 10) {minutes = "0"+minutes;}
   if (seconds < 10) {seconds = "0"+seconds;}
-  return hours+':'+minutes+':'+seconds;
+
+  var prefix = showHours ? hours+':' : "";
+  return prefix+minutes+':'+seconds;
 }
 
 var getDateForSort = function(dateString) {
   return new Date(dateString.substring(0, dateString.length - 1));
 }
 
-var listActivities = function() {
-
-  var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
-
-  var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
-
-  $.get(listAthleteActivitiesUrl, function(activityList) {
-
-    var weeklyGridBody = document.querySelector("#weeklyGridBody");
+var populateTable = function(sortedActivityList) {
+  var weeklyGridBody = document.querySelector("#weeklyGridBody");
     weeklyGridBody.innerHTML = "";
 
     var totalDistanceEl = document.querySelector("#totalDistance");
 
     var useMetric = document.querySelector("input[type=checkbox]").checked;
 
+    var paceUnit = useMetric ? "/km" : "/mi";
+
     var totalDistance = 0;
 
-    var sortedActivities = activityList.sort((a, b) => getDateForSort(a.start_date_local) - getDateForSort(b.start_date_local));
-
-    sortedActivities.forEach(activity => {
+    sortedActivityList.forEach(activity => {
       var row = document.createElement("tr");
       weeklyGridBody.appendChild(row);
 
@@ -180,7 +178,7 @@ var listActivities = function() {
       totalDistance += floatDistance;
       var averagePaceInSeconds = duration / floatDistance;
       averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-      var averagePace = formatDuration(averagePaceInSeconds);
+      var averagePace = formatDuration(averagePaceInSeconds, false) + paceUnit;
 
       var colDate = document.createElement("td");
       colDate.textContent = activityDate;
@@ -217,9 +215,21 @@ var listActivities = function() {
     });
 
     totalDistanceEl.textContent = totalDistance.toFixed(1);
-  });
+}
 
-  return true;
+var listActivities = function() {
+
+  if (sortedActivityListCache) {
+    populateTable(sortedActivityListCache);
+  } else {
+    var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
+    var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
+
+    $.get(listAthleteActivitiesUrl, function(activityList) {
+      sortedActivityListCache = activityList.sort((a, b) => getDateForSort(a.start_date_local) - getDateForSort(b.start_date_local));
+      populateTable(sortedActivityListCache);
+    });
+  }
 }
 
 var getEndDate = function() {
@@ -238,8 +248,6 @@ var getStartDate = function(endDate) {
   return startDate;
 }
 
-// Without jQuery
-// Define a convenience method and use it
 var ready = (callback) => {
   if (document.readyState != "loading") callback();
   else document.addEventListener("DOMContentLoaded", callback);
@@ -256,6 +264,12 @@ var formatPeriodDate = function(date, isMetric) {
     return month + "/" + day + "/" + year;
   }
 }
+
+var handleMetricChange = function() {
+  populatePeriod();
+  listActivities();
+}
+
 
 var populatePeriod = function() {
   // populate the period

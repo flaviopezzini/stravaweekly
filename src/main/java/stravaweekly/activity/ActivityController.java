@@ -14,9 +14,11 @@ import java.time.*;
 public class ActivityController {
 
   private final RequestService requestService;
+  private final ActivityService activityService;
 
-  public ActivityController(RequestService requestService) {
+  public ActivityController(RequestService requestService, ActivityService activityService) {
     this.requestService = requestService;
+    this.activityService = activityService;
   }
 
   @GetMapping("/athlete/clubs")
@@ -34,19 +36,8 @@ public class ActivityController {
     // do all calculations on dates based on the user timezone
     ZoneId userZoneId = ZoneId.ofOffset("", ZoneOffset.ofHours(userTimezoneOffsetInHours));
 
-    LocalDateTime now = LocalDateTime.now();
-    ZonedDateTime zonedNow = ZonedDateTime.of(now, userZoneId);
-
-    // 1-Mon, 2-Tue, 3-Wed, 4-Thu, 5-Fri, 6-Sat, 7-Sun
-    int dayOfWeek = zonedNow.getDayOfWeek().getValue();
-    ZonedDateTime zonedEnd;
-    // if it's Sunday get this week, else get last week
-    if (zonedNow.getDayOfWeek().equals(DayOfWeek.SUNDAY)) {
-      zonedEnd = zonedNow;
-    } else {
-      zonedEnd = zonedNow.minusDays(dayOfWeek);
-    }
-    ZonedDateTime zonedStart = zonedEnd.minusDays(7);
+    ZonedDateTime zonedEnd = activityService.getEndDate(userZoneId);
+    ZonedDateTime zonedStart = activityService.getStartDate(zonedEnd);
 
     final String url = String.format("https://www.strava.com/api/v3/athlete/activities?before=%s&after=%s",
             (zonedEnd.toInstant().toEpochMilli() / 1000),

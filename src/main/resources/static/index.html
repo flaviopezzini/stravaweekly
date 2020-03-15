@@ -12,6 +12,8 @@
       href="/webjars/bootstrap/css/bootstrap.min.css" />
   <script type="text/javascript" src="/webjars/jquery/jquery.min.js"></script>
   <script type="text/javascript" src="/webjars/bootstrap/js/bootstrap.min.js"></script>
+
+  <script src="/webjars/luxon/1.21.2/build/global/luxon.min.js"></script>
 </head>
 
 <body>
@@ -222,7 +224,7 @@ var listActivities = function() {
   if (sortedActivityListCache) {
     populateTable(sortedActivityListCache);
   } else {
-    var userTimezoneOffsetInHours = parseInt(new Date().getTimezoneOffset() / 60);
+    var userTimezoneOffsetInHours = parseInt(luxon.DateTime.local().offset / 60);
     var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
 
     $.get(listAthleteActivitiesUrl, function(activityList) {
@@ -233,19 +235,19 @@ var listActivities = function() {
 }
 
 var getEndDate = function() {
-  var endDate = new Date();
-  var dayOfWeek = endDate.getDay();
-  if (dayOfWeek != 0) {
-    endDate.setDate(endDate.getDate() - dayOfWeek);
+  var endDate = luxon.DateTime.local();
+
+  var dayOfWeek = endDate.weekday;
+  const SUNDAY = 7;
+  if (dayOfWeek != SUNDAY) {
+    endDate = endDate.minus({days: dayOfWeek});
   }
 
   return endDate;
 }
 
 var getStartDate = function(endDate) {
-  var startDate = new Date(endDate.getTime());
-  startDate.setDate(startDate.getDate() - 7);
-  return startDate;
+  return endDate.minus({days: 6});
 }
 
 var ready = (callback) => {
@@ -254,14 +256,10 @@ var ready = (callback) => {
 }
 
 var formatPeriodDate = function(date, isMetric) {
-  var day = date.getDate();
-  var month = date.getMonth() + 1;
-  var year = date.getFullYear();
-
   if (isMetric) {
-    return day + "/" + month + "/" + year;
+    return date.toFormat('dd/MM/yyyy');
   } else {
-    return month + "/" + day + "/" + year;
+    return date.toFormat('MM/dd/yyyy');
   }
 }
 
@@ -276,7 +274,8 @@ var populatePeriod = function() {
   var isMetric = document.querySelector("input[type=checkbox]").checked;
 
   var endDate = getEndDate();
-  document.getElementById("period").innerText = "From " + formatPeriodDate(getStartDate(endDate), isMetric) 
+  var startDate = getStartDate(endDate);
+  document.getElementById("period").innerText = "From " + formatPeriodDate(startDate, isMetric) 
                                               + " to " + formatPeriodDate(endDate, isMetric);
 }
 

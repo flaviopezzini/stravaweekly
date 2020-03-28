@@ -15,7 +15,7 @@ import java.time.*;
 @RestController
 public class ActivityController {
 
-  Logger logger = LoggerFactory.getLogger(ActivityController.class);
+  private static final Logger logger = LoggerFactory.getLogger(ActivityController.class);
 
   private final RequestService requestService;
   private final ActivityService activityService;

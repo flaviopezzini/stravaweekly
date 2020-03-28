@@ -1,5 +1,7 @@
 package stravaweekly.activity;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,8 @@ import java.time.*;
 
 @RestController
 public class ActivityController {
+
+  Logger logger = LoggerFactory.getLogger(ActivityController.class);
 
   private final RequestService requestService;
   private final ActivityService activityService;
@@ -33,11 +37,18 @@ public class ActivityController {
           final @AuthenticationPrincipal Principal principal,
           @RequestParam(name = "userTimezoneOffsetInHours", required = true) int userTimezoneOffsetInHours) {
 
+    logger.info("userTimezoneOffsetInHours = " + userTimezoneOffsetInHours);
+
     // do all calculations on dates based on the user timezone
     ZoneId userZoneId = ZoneId.ofOffset("", ZoneOffset.ofHours(userTimezoneOffsetInHours));
 
+    logger.info("userZoneId = " + userZoneId);
+
     ZonedDateTime zonedEnd = activityService.getEndDate(userZoneId);
     ZonedDateTime zonedStart = activityService.getStartDate(zonedEnd);
+
+    logger.info("zonedEnd = " + zonedEnd);
+    logger.info("zonedStart = " + zonedStart);
 
     final String url = String.format("https://www.strava.com/api/v3/athlete/activities?before=%s&after=%s",
             (zonedEnd.toInstant().toEpochMilli() / 1000),

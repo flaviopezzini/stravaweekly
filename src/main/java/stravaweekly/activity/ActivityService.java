@@ -11,14 +11,8 @@ public class ActivityService {
 
     private static final Logger logger = LoggerFactory.getLogger(ActivityService.class);
 
-    private final Clock clock;
-
-    public ActivityService(Clock clock) {
-        this.clock = clock;
-    }
-
     public ZonedDateTime getEndDate(ZoneId userZoneId) {
-        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime now = LocalDateTime.now();
 
         logger.info("now" +  now);
         ZonedDateTime zonedNow = ZonedDateTime.of(now, userZoneId);

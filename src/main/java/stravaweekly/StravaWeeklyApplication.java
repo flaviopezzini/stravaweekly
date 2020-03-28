@@ -28,9 +28,4 @@ public class StravaWeeklyApplication extends WebSecurityConfigurerAdapter {
     SpringApplication.run(StravaWeeklyApplication.class, args);
   }
 
-  @Bean
-  public Clock getClock() {
-    return Clock.systemUTC();
-  }
-
 }

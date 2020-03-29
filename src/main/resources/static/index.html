@@ -32,8 +32,6 @@
     <div>
       <input type="checkbox" id="measurementSystem" onchange="handleMetricChange()">Show metric? <br/>
 
-      <button onClick="listActivities()" class="btn btn-primary">Generate table</button>
-
       <button onClick="logout()" class="btn btn-primary">Logout</button>
     </div>
 
@@ -41,7 +39,9 @@
 
     <p>Start date is the Monday of the week</p>
     <p>End date is calculated: If today is Sunday, end date is today, else it computes the Sunday before today</p>
-    <h3>Weekly for period: <span id="period"></span></h3><br/>
+    <button onClick="showPreviousWeek()" class="btn btn-primary">Previous Week</button>
+    <button onClick="showNextWeek()" class="btn btn-primary">Next Week</button>
+    <h2>Weekly for period: From: <span id="startDateDisplay"></span> To <span id="endDateDisplay"></span></h2>
 
     <table id="weeklyGrid" class="table table-bordered">
       <thead>
@@ -83,6 +83,8 @@
 <script type="text/javascript">
 // start this empty so it loads the data the first time
 var sortedActivityListCache = null;
+var startDate = null;
+var endDate = null;
 
 $.ajaxSetup({
   beforeSend: function(xhr, settings) {
@@ -225,7 +227,10 @@ var listActivities = function() {
     populateTable(sortedActivityListCache);
   } else {
     var userTimezoneOffsetInHours = parseInt(luxon.DateTime.local().offset / 60);
-    var listAthleteActivitiesUrl = "/athlete/activities?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours;
+    var listAthleteActivitiesUrl = "/athlete/activities" + 
+      "?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours +
+      "&startDate=" + formatDateParameterToISOFormat(startDate) + "00:00:00.000" +
+      "&endDate=" + formatDateParameterToISOFormat(endDate) + "23:59:59.999";
 
     $.get(listAthleteActivitiesUrl, function(activityList) {
       sortedActivityListCache = activityList.sort((a, b) => getDateForSort(a.start_date_local) - getDateForSort(b.start_date_local));
@@ -250,6 +255,24 @@ var getStartDate = function(endDate) {
   return endDate.minus({days: 6});
 }
 
+var showPreviousWeek = function() {
+  startDate = startDate.minus({days: 7});
+  endDate = endDate.minus({days: 7});
+  populatePeriod(startDate, endDate);
+
+  sortedActivityListCache = null;
+  listActivities();
+}
+
+var showNextWeek = function() {
+  startDate = startDate.plus({days: 7});
+  endDate = endDate.plus({days: 7});
+
+  populatePeriod(startDate, endDate);
+  sortedActivityListCache = null;
+  listActivities();
+}
+
 var ready = (callback) => {
   if (document.readyState != "loading") callback();
   else document.addEventListener("DOMContentLoaded", callback);
@@ -264,23 +287,27 @@ var formatPeriodDate = function(date, isMetric) {
 }
 
 var handleMetricChange = function() {
-  populatePeriod();
+  populatePeriod(startDate, endDate);
   listActivities();
 }
 
+var formatDateParameterToISOFormat = function(date) {
+  return date.toFormat("yyyy-MM-dd'T'");
+}
 
-var populatePeriod = function() {
-  // populate the period
+var populatePeriod = function(startDate, endDate) {
   var isMetric = document.querySelector("input[type=checkbox]").checked;
 
-  var endDate = getEndDate();
-  var startDate = getStartDate(endDate);
-  document.getElementById("period").innerText = "From " + formatPeriodDate(startDate, isMetric) 
-                                              + " to " + formatPeriodDate(endDate, isMetric);
+  document.getElementById("startDateDisplay").innerText = formatPeriodDate(startDate, isMetric);
+  document.getElementById("endDateDisplay").innerText = formatPeriodDate(endDate, isMetric);
 }
 
 ready(() => { 
-  populatePeriod();
+  endDate = getEndDate();
+  startDate = getStartDate(endDate);
+
+  populatePeriod(startDate, endDate);
+  listActivities();
 });
 </script>
 

@@ -124,18 +124,10 @@ var logout = function() {
   return true;
 }
 
-var formatDuration = function (seconds, showHours) {
-  var sec_num = parseInt(seconds, 10); // don't forget the second param
-  var hours   = Math.floor(sec_num / 3600);
-  var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
-  var seconds = sec_num - (hours * 3600) - (minutes * 60);
-
-  if (hours   < 10) {hours   = "0"+hours;}
-  if (minutes < 10) {minutes = "0"+minutes;}
-  if (seconds < 10) {seconds = "0"+seconds;}
-
-  var prefix = showHours ? hours+':' : "";
-  return prefix+minutes+':'+seconds;
+var formatDuration = function (seconds) {
+  var milliseconds = parseInt(seconds) * 1000;
+  var duration = luxon.Duration.fromMillis(milliseconds);
+  return duration.toFormat("hh:mm:ss");
 }
 
 var getDateForSort = function(dateString) {
@@ -182,7 +174,7 @@ var populateTable = function(sortedActivityList) {
       totalDistance += floatDistance;
       var averagePaceInSeconds = duration / floatDistance;
       averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-      var averagePace = formatDuration(averagePaceInSeconds, false) + paceUnit;
+      var averagePace = formatDuration(averagePaceInSeconds) + paceUnit;
 
       var colDate = document.createElement("td");
       colDate.textContent = activityDate;

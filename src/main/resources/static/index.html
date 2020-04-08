@@ -176,7 +176,7 @@ var populateTable = function(sortedActivityList) {
         elevation = elevation.toFixed(0);
       }
 
-      distance = distance.toFixed(1);
+      distance = distance.toFixed(2);
       var floatDistance = parseFloat(distance);
       totalDistance += floatDistance;
       var averagePaceInSeconds = durationInSeconds / floatDistance;
@@ -219,7 +219,7 @@ var populateTable = function(sortedActivityList) {
       row.appendChild(colElevation);
     });
 
-    totalDistanceEl.textContent = totalDistance.toFixed(1) + distanceUnitSuffix;
+    totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
 }
 
 var listActivities = function() {

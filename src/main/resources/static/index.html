@@ -27,8 +27,6 @@
 
     <h1>Strava Weekly Generator</h1>
 
-    <input type="hidden" id="user" value="" />
-
     <div>
       <input type="checkbox" id="measurementSystem" onchange="handleMetricChange()">Show metric? <br/>
 
@@ -73,7 +71,7 @@
     </table>
 
     <div>
-      <h1>Total distance: <span id="totalDistance"></span></h1>
+      <h1>Total distance: <span id="totalDistanceInMeters"></span></h1>
     </div>
 
   </div>
@@ -85,6 +83,14 @@
 var sortedActivityListCache = null;
 var startDate = null;
 var endDate = null;
+
+var athleteToken = null;
+
+// units
+var KILOMETER = 1000;
+var MILE = 1609;
+var MILLISECONDS_IN_A_SECOND = 1000;
+var METER_TO_FEET_RATIO = 3.28084;
 
 $.ajaxSetup({
   beforeSend: function(xhr, settings) {
@@ -100,15 +106,14 @@ $.ajaxSetup({
         // Only send the token to relative URLs i.e. locally.
         xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
 
-        xhr.setRequestHeader("Authorization", "Bearer " + document.querySelector("#user").value);
+        xhr.setRequestHeader("Authorization", "Bearer " + athleteToken);
       }
     }
   }
 });
 
 $.get("/athleteToken", function(data) {
-
-  document.querySelector("#user").value = data.accessToken;
+  athleteToken = data.accessToken;
   document.querySelector(".unauthenticated").style.display = "none";
   document.querySelector(".authenticated").style.display = "block";
 });
@@ -116,7 +121,7 @@ $.get("/athleteToken", function(data) {
 var logout = function() {
 
   $.post("/logout", function() {
-    document.querySelector("#user").value = "";
+    athleteToken = null;
     document.querySelector(".unauthenticated").style.display = "block";
     document.querySelector(".authenticated").style.display = "none";
   });
@@ -132,7 +137,7 @@ var populateTable = function(sortedActivityList) {
   var weeklyGridBody = document.querySelector("#weeklyGridBody");
     weeklyGridBody.innerHTML = "";
 
-    var totalDistanceEl = document.querySelector("#totalDistance");
+    var totalDistanceEl = document.querySelector("#totalDistanceInMeters");
 
     var useMetric = document.querySelector("input[type=checkbox]").checked;
 
@@ -147,7 +152,7 @@ var populateTable = function(sortedActivityList) {
 
     elevationUnitEl.textContent = useMetric ? "m" : "ft";
 
-    var totalDistance = 0;
+    var totalDistanceInMeters = 0;
 
     sortedActivityList.forEach(activity => {
       var row = document.createElement("tr");
@@ -164,24 +169,24 @@ var populateTable = function(sortedActivityList) {
           activity.start_date_local.substring(8,10) + "/" + 
           activity.start_date_local.substring(5,7) + "/" + 
           activity.start_date_local.substring(0,4);
-        distance = activity.distance / 1000;
+        distance = activity.distance / KILOMETER;
         elevation = parseInt(activity.total_elevation_gain);
       } else {
         activityDate = 
           activity.start_date_local.substring(5,7) + "/" + 
           activity.start_date_local.substring(8,10) + "/" + 
           activity.start_date_local.substring(0,4);
-        distance = activity.distance / 1609;
-        elevation = parseInt(activity.total_elevation_gain) * 3.28084;
+        distance = activity.distance / MILE;
+        elevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
         elevation = elevation.toFixed(0);
       }
 
       distance = distance.toFixed(2);
-      var floatDistance = parseFloat(distance);
-      totalDistance += floatDistance;
-      var averagePaceInSeconds = durationInSeconds / floatDistance;
+      var floatDistanceInMeters = parseFloat(activity.distance);
+      totalDistanceInMeters += floatDistanceInMeters;
+      var averagePaceInSeconds = durationInSeconds / distance;
       averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-      var averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * 1000).toFormat("mm:ss");
+      var averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("mm:ss");
       
       var colDate = document.createElement("td");
       colDate.style.textAlign = "center";
@@ -205,7 +210,7 @@ var populateTable = function(sortedActivityList) {
 
       var colDuration = document.createElement("td");
       colDuration.style.textAlign = "center";
-      colDuration.textContent = luxon.Duration.fromMillis(parseInt(durationInSeconds) * 1000).toFormat("hh:mm:ss");
+      colDuration.textContent = luxon.Duration.fromMillis(parseInt(durationInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("hh:mm:ss");
       row.appendChild(colDuration);
 
       var colAveragePace = document.createElement("td");
@@ -218,6 +223,13 @@ var populateTable = function(sortedActivityList) {
       colElevation.textContent = elevation;
       row.appendChild(colElevation);
     });
+
+    var totalDistance;
+    if (useMetric) {
+      totalDistance = totalDistanceInMeters / KILOMETER;
+    } else {
+      totalDistance = totalDistanceInMeters / MILE;
+    }
 
     totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
 }

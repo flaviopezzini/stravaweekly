@@ -184,9 +184,13 @@ var populateTable = function(sortedActivityList) {
       distance = distance.toFixed(2);
       var floatDistanceInMeters = parseFloat(activity.distance);
       totalDistanceInMeters += floatDistanceInMeters;
-      var averagePaceInSeconds = durationInSeconds / distance;
-      averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-      var averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("mm:ss");
+
+      var averagePace = "00:00";
+      if (activity.distance > 0) { // weight workouts etc don't have a distance
+        var averagePaceInSeconds = durationInSeconds / distance;
+        averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
+        averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("mm:ss");
+      }
       
       var colDate = document.createElement("td");
       colDate.style.textAlign = "center";

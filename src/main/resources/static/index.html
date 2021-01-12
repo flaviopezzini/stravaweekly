@@ -185,7 +185,7 @@ var populateTable = function(sortedActivityList) {
 
       distance = distance.toFixed(2);
       var floatDistanceInMeters = parseFloat(activity.distance);
-      if (type == "Run") {
+      if (type != "Ride" && type != "Swim") {
         totalDistanceInMeters += floatDistanceInMeters;  
       }
 

@@ -160,6 +160,8 @@ var populateTable = function(sortedActivityList) {
 
       var durationInSeconds = activity.moving_time;
 
+      var type = activity.type;
+
       var activityDate;
       var distance;
       var elevation;
@@ -183,7 +185,9 @@ var populateTable = function(sortedActivityList) {
 
       distance = distance.toFixed(2);
       var floatDistanceInMeters = parseFloat(activity.distance);
-      totalDistanceInMeters += floatDistanceInMeters;
+      if (type == "Run") {
+        totalDistanceInMeters += floatDistanceInMeters;  
+      }
 
       var averagePace = "00:00";
       if (activity.distance > 0) { // weight workouts etc don't have a distance

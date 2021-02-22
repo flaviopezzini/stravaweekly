@@ -20,13 +20,6 @@ public class ActivityController {
     this.requestService = requestService;
   }
 
-  @GetMapping("/athlete/clubs")
-  public ResponseEntity<String> athleteClubs(
-      final @AuthenticationPrincipal Principal principal) {
-      final String url = "https://www.strava.com/api/v3/athlete/clubs";
-    return requestService.sendGetRequest(principal, url);
-  }
-
   @GetMapping("/athlete/activities")
   public ResponseEntity<String> listAthleteActivities(
           final @AuthenticationPrincipal Principal principal,

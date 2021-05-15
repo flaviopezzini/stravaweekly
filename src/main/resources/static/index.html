@@ -40,6 +40,7 @@
     <button onClick="showPreviousWeek()" class="btn btn-primary">Previous Week</button>
     <button onClick="showNextWeek()" class="btn btn-primary">Next Week</button>
     <h2>Weekly for period: From: <span id="startDateDisplay"></span> To <span id="endDateDisplay"></span></h2>
+    <h3>Mouse over for conversions</h3>
 
     <table id="weeklyGrid" class="table table-bordered">
       <thead>
@@ -145,11 +146,6 @@ var populateTable = function(sortedActivityList) {
     var averagePaceUnitEl = document.querySelector("#averagePaceUnit");
     var elevationUnitEl = document.querySelector("#elevationUnit");
 
-    var distanceUnitSuffix = useMetric ? "km" : "mi";
-
-    distanceUnitEl.textContent = distanceUnitSuffix;
-    averagePaceUnitEl.textContent = distanceUnitSuffix;
-
     elevationUnitEl.textContent = useMetric ? "m" : "ft";
 
     var totalDistanceInMeters = 0;
@@ -163,9 +159,14 @@ var populateTable = function(sortedActivityList) {
       var type = activity.type;
 
       var activityDate;
+      var tooltipDate;
       var distance;
+      var tooltipDistance;
+      var tooltipDistanceUnit;
       var elevation;
-      
+      var tooltipElevation;
+      var tooltipElevationUnit;
+
       if (useMetric) {
         activityDate = 
           activity.start_date_local.substring(8,10) + "/" + 
@@ -173,6 +174,16 @@ var populateTable = function(sortedActivityList) {
           activity.start_date_local.substring(0,4);
         distance = activity.distance / KILOMETER;
         elevation = parseInt(activity.total_elevation_gain);
+        tooltipDate =
+          activity.start_date_local.substring(5,7) + "/" +
+          activity.start_date_local.substring(8,10) + "/" +
+          activity.start_date_local.substring(0,4);
+        tooltipDistance = activity.distance / MILE;
+        tooltipDistance = tooltipDistance.toFixed(2);
+        tooltipDistanceUnit = " mi";
+        tooltipElevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
+        tooltipElevation = elevation.toFixed(0);
+        tooltipElevationUnit = " feet";
       } else {
         activityDate = 
           activity.start_date_local.substring(5,7) + "/" + 
@@ -181,6 +192,16 @@ var populateTable = function(sortedActivityList) {
         distance = activity.distance / MILE;
         elevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
         elevation = elevation.toFixed(0);
+
+        tooltipDate =
+          activity.start_date_local.substring(8,10) + "/" +
+          activity.start_date_local.substring(5,7) + "/" +
+          activity.start_date_local.substring(0,4);
+        tooltipDistance = activity.distance / KILOMETER;
+        tooltipDistance = tooltipDistance.toFixed(2);
+        tooltipDistanceUnit = " km";
+        tooltipElevation = parseInt(activity.total_elevation_gain);
+        tooltipElevationUnit = " m";
       }
 
       distance = distance.toFixed(2);
@@ -190,15 +211,24 @@ var populateTable = function(sortedActivityList) {
       }
 
       var averagePace = "00:00";
+      var tooltipAveragePace = "00:00";
+      var tooltipAveragePaceUnit;
       if (activity.distance > 0) { // weight workouts etc don't have a distance
         var averagePaceInSeconds = durationInSeconds / distance;
         averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-        averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("mm:ss");
+        averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND)
+           .toFormat("mm:ss");
+        var tooltipAveragePaceInSeconds = durationInSeconds / tooltipDistance;
+        tooltipAveragePaceInSeconds = tooltipAveragePaceInSeconds.toFixed(0);
+        tooltipAveragePace = luxon.Duration.fromMillis(parseInt(tooltipAveragePaceInSeconds) * MILLISECONDS_IN_A_SECOND)
+           .toFormat("mm:ss");
+        tooltipAveragePaceUnit = useMetric ? "/mi" : "/km";
       }
       
       var colDate = document.createElement("td");
       colDate.style.textAlign = "center";
       colDate.textContent = activityDate;
+      colDate.title = tooltipDate;
       row.appendChild(colDate);
 
       var activityUrl = document.createElement("a");
@@ -214,6 +244,7 @@ var populateTable = function(sortedActivityList) {
       var colDistance = document.createElement("td");
       colDistance.style.textAlign = "center";
       colDistance.textContent = distance;
+      colDistance.title = tooltipDistance + tooltipDistanceUnit;
       row.appendChild(colDistance);
 
       var colDuration = document.createElement("td");
@@ -224,22 +255,34 @@ var populateTable = function(sortedActivityList) {
       var colAveragePace = document.createElement("td");
       colAveragePace.style.textAlign = "center";
       colAveragePace.textContent = averagePace;
+      colAveragePace.title = tooltipAveragePace + tooltipAveragePaceUnit;
       row.appendChild(colAveragePace);
 
       var colElevation = document.createElement("td");
       colElevation.style.textAlign = "center";
       colElevation.textContent = elevation;
+      colElevation.title = tooltipElevation + tooltipElevationUnit;
       row.appendChild(colElevation);
     });
 
     var totalDistance;
+    var tooltipTotalDistance;
     if (useMetric) {
       totalDistance = totalDistanceInMeters / KILOMETER;
+      tooltipTotalDistance = totalDistanceInMeters / MILE;
     } else {
       totalDistance = totalDistanceInMeters / MILE;
+      tooltipTotalDistance = totalDistanceInMeters / KILOMETER;
     }
 
+    var distanceUnitSuffix = useMetric ? "km" : "mi";
+    var tooltipTotalDistanceUnit = useMetric ? "mi" : "km";
+
+    distanceUnitEl.textContent = distanceUnitSuffix;
+    averagePaceUnitEl.textContent = distanceUnitSuffix;
+
     totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
+    totalDistanceEl.title = tooltipTotalDistance.toFixed(2) + tooltipTotalDistanceUnit;
 }
 
 var listActivities = function() {

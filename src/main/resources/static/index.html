@@ -50,15 +50,19 @@
           Name
         </th>
         <th scope="col" style="text-align: center;">
-          Distance <br/>
-          in <span id="distanceUnit"></span>
+          mi
+        </th>
+        <th scope="col" style="text-align: center;">
+          km
         </th>
         <th scope="col" style="text-align: center;">
           Duration
         </th>
         <th scope="col" style="text-align: center;">
-          Avg Pace <br/>
-          per <span id="averagePaceUnit"></span>
+          Avg/mi
+        </th>
+        <th scope="col" style="text-align: center;">
+          Avg/km
         </th>
         <th scope="col" style="text-align: center;">
           Elevation Gain <br/>
@@ -71,7 +75,7 @@
     </table>
 
     <div>
-      <h1>Total distance: <span id="totalDistanceInMeters"></span></h1>
+      <h1>Total distance: <span id="totalDistance"></span></h1>
     </div>
 
   </div>
@@ -137,12 +141,10 @@ var populateTable = function(sortedActivityList) {
   var weeklyGridBody = document.querySelector("#weeklyGridBody");
     weeklyGridBody.innerHTML = "";
 
-    var totalDistanceEl = document.querySelector("#totalDistanceInMeters");
+    var totalDistanceEl = document.querySelector("#totalDistance");
 
     var useMetric = document.querySelector("input[type=checkbox]").checked;
 
-    var distanceUnitEl = document.querySelector("#distanceUnit");
-    var averagePaceUnitEl = document.querySelector("#averagePaceUnit");
     var elevationUnitEl = document.querySelector("#elevationUnit");
 
     elevationUnitEl.textContent = useMetric ? "m" : "ft";
@@ -157,77 +159,48 @@ var populateTable = function(sortedActivityList) {
 
       var type = activity.type;
 
+      var distanceMi = activity.distance / MILE;
+      distanceMi = distanceMi.toFixed(2);
+      var distanceKm = activity.distance / KILOMETER;
+      distanceKm = distanceKm.toFixed(2);
+
       var activityDate;
-      var tooltipDate;
-      var distance;
-      var tooltipDistance;
-      var tooltipDistanceUnit;
       var elevation;
-      var tooltipElevation;
-      var tooltipElevationUnit;
 
       if (useMetric) {
         activityDate = 
           activity.start_date_local.substring(8,10) + "/" + 
-          activity.start_date_local.substring(5,7) + "/" + 
-          activity.start_date_local.substring(0,4);
-        distance = activity.distance / KILOMETER;
+          activity.start_date_local.substring(5,7);
         elevation = parseInt(activity.total_elevation_gain);
-        tooltipDate =
-          activity.start_date_local.substring(5,7) + "/" +
-          activity.start_date_local.substring(8,10) + "/" +
-          activity.start_date_local.substring(0,4);
-        tooltipDistance = activity.distance / MILE;
-        tooltipDistance = tooltipDistance.toFixed(2);
-        tooltipDistanceUnit = " mi";
-        tooltipElevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
-        tooltipElevation = elevation.toFixed(0);
-        tooltipElevationUnit = " feet";
       } else {
         activityDate = 
           activity.start_date_local.substring(5,7) + "/" + 
-          activity.start_date_local.substring(8,10) + "/" + 
-          activity.start_date_local.substring(0,4);
-        distance = activity.distance / MILE;
+          activity.start_date_local.substring(8,10);
         elevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
         elevation = elevation.toFixed(0);
-
-        tooltipDate =
-          activity.start_date_local.substring(8,10) + "/" +
-          activity.start_date_local.substring(5,7) + "/" +
-          activity.start_date_local.substring(0,4);
-        tooltipDistance = activity.distance / KILOMETER;
-        tooltipDistance = tooltipDistance.toFixed(2);
-        tooltipDistanceUnit = " km";
-        tooltipElevation = parseInt(activity.total_elevation_gain);
-        tooltipElevationUnit = " m";
       }
 
-      distance = distance.toFixed(2);
       var floatDistanceInMeters = parseFloat(activity.distance);
       if (type != "Ride" && type != "Swim") {
         totalDistanceInMeters += floatDistanceInMeters;  
       }
 
-      var averagePace = "00:00";
-      var tooltipAveragePace = "00:00";
-      var tooltipAveragePaceUnit;
+      var averagePaceMi = "00:00";
+      var averagePaceKm = "00:00";
       if (activity.distance > 0) { // weight workouts etc don't have a distance
-        var averagePaceInSeconds = durationInSeconds / distance;
-        averagePaceInSeconds = averagePaceInSeconds.toFixed(0);
-        averagePace = luxon.Duration.fromMillis(parseInt(averagePaceInSeconds) * MILLISECONDS_IN_A_SECOND)
+        var averagePaceInSecondsMi = durationInSeconds / distanceMi;
+        var averagePaceInSecondsKm = durationInSeconds / distanceKm;
+        averagePaceInSecondsMi = averagePaceInSecondsMi.toFixed(0);
+        averagePaceInSecondsKm = averagePaceInSecondsKm.toFixed(0);
+        averagePaceMi = luxon.Duration.fromMillis(parseInt(averagePaceInSecondsMi) * MILLISECONDS_IN_A_SECOND)
            .toFormat("mm:ss");
-        var tooltipAveragePaceInSeconds = durationInSeconds / tooltipDistance;
-        tooltipAveragePaceInSeconds = tooltipAveragePaceInSeconds.toFixed(0);
-        tooltipAveragePace = luxon.Duration.fromMillis(parseInt(tooltipAveragePaceInSeconds) * MILLISECONDS_IN_A_SECOND)
+        averagePaceKm = luxon.Duration.fromMillis(parseInt(averagePaceInSecondsKm) * MILLISECONDS_IN_A_SECOND)
            .toFormat("mm:ss");
-        tooltipAveragePaceUnit = useMetric ? "/mi" : "/km";
       }
       
       var colDate = document.createElement("td");
       colDate.style.textAlign = "center";
       colDate.textContent = activityDate;
-      colDate.title = tooltipDate;
       row.appendChild(colDate);
 
       var activityUrl = document.createElement("a");
@@ -240,48 +213,47 @@ var populateTable = function(sortedActivityList) {
       colNameLink.appendChild(activityUrl);
       row.appendChild(colNameLink);
 
-      var colDistance = document.createElement("td");
-      colDistance.style.textAlign = "center";
-      colDistance.textContent = distance;
-      colDistance.title = tooltipDistance + tooltipDistanceUnit;
-      row.appendChild(colDistance);
+      var colDistanceMi = document.createElement("td");
+      colDistanceMi.style.textAlign = "center";
+      colDistanceMi.textContent = distanceMi;
+      row.appendChild(colDistanceMi);
+
+      var colDistanceKm = document.createElement("td");
+      colDistanceKm.style.textAlign = "center";
+      colDistanceKm.textContent = distanceKm;
+      row.appendChild(colDistanceKm);
 
       var colDuration = document.createElement("td");
       colDuration.style.textAlign = "center";
       colDuration.textContent = luxon.Duration.fromMillis(parseInt(durationInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("hh:mm:ss");
       row.appendChild(colDuration);
 
-      var colAveragePace = document.createElement("td");
-      colAveragePace.style.textAlign = "center";
-      colAveragePace.textContent = averagePace;
-      colAveragePace.title = tooltipAveragePace + tooltipAveragePaceUnit;
-      row.appendChild(colAveragePace);
+      var colAveragePaceMi = document.createElement("td");
+      colAveragePaceMi.style.textAlign = "center";
+      colAveragePaceMi.textContent = averagePaceMi;
+      row.appendChild(colAveragePaceMi);
+
+      var colAveragePaceKm = document.createElement("td");
+      colAveragePaceKm.style.textAlign = "center";
+      colAveragePaceKm.textContent = averagePaceKm;
+      row.appendChild(colAveragePaceKm);
 
       var colElevation = document.createElement("td");
       colElevation.style.textAlign = "center";
       colElevation.textContent = elevation;
-      colElevation.title = tooltipElevation + tooltipElevationUnit;
       row.appendChild(colElevation);
     });
 
     var totalDistance;
-    var tooltipTotalDistance;
     if (useMetric) {
       totalDistance = totalDistanceInMeters / KILOMETER;
-      tooltipTotalDistance = totalDistanceInMeters / MILE;
     } else {
       totalDistance = totalDistanceInMeters / MILE;
-      tooltipTotalDistance = totalDistanceInMeters / KILOMETER;
     }
 
     var distanceUnitSuffix = useMetric ? "km" : "mi";
-    var tooltipTotalDistanceUnit = useMetric ? "mi" : "km";
-
-    distanceUnitEl.textContent = distanceUnitSuffix;
-    averagePaceUnitEl.textContent = distanceUnitSuffix;
 
     totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
-    totalDistanceEl.title = tooltipTotalDistance.toFixed(2) + tooltipTotalDistanceUnit;
 }
 
 var listActivities = function() {

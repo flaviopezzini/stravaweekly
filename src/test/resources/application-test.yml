@@ -24,7 +24,9 @@ spring:
             authorization-uri: https://www.strava.com/oauth/authorize
             user-info-uri: https://www.strava.com/api/v3/athlete
             user-name-attribute: id
+
 server:
   error:
     whitelabel:
       enabled: false
+

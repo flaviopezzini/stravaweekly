@@ -20,7 +20,7 @@
 
   <div class="container unauthenticated">
     <h1>Login</h1>
-    With Strava: <a href="/login">click here</a>
+    With Strava: <a href="/oauth2/authorization/strava">click here</a>
   </div>
 
   <div class="container authenticated" style="display: none">
@@ -337,7 +337,7 @@ var populatePeriod = function(startDate, endDate) {
   document.querySelector("#endDateDisplay").innerText = formatPeriodDate(endDate, isMetric);
 }
 
-ready(() => { 
+ready(() => {
   endDate = getEndDate();
   startDate = getStartDate(endDate);
 

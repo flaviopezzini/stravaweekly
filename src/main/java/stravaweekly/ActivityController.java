@@ -1,15 +1,16 @@
-package stravaweekly.activity;
+package stravaweekly;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import stravaweekly.rest.RequestService;
 
-import java.security.Principal;
-import java.time.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 @RestController
 public class ActivityController {
@@ -22,7 +23,7 @@ public class ActivityController {
 
   @GetMapping("/athlete/activities")
   public ResponseEntity<String> listAthleteActivities(
-          final @AuthenticationPrincipal Principal principal,
+          final OAuth2AuthenticationToken auth,
           @RequestParam(name = "userTimezoneOffsetInHours") int userTimezoneOffsetInHours,
           @RequestParam(name = "startDate")
           @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -40,7 +41,7 @@ public class ActivityController {
             (zonedEnd.toInstant().toEpochMilli() / 1000),
             (zonedStart.toInstant().toEpochMilli() / 1000));
 
-    return requestService.sendGetRequest(principal, url);
+    return requestService.sendGetRequest(auth, url);
   }
 
 }

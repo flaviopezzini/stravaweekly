@@ -25,6 +25,7 @@ public class SecurityConfig implements WebMvcConfigurer {
     http.antMatcher("/**").authorizeRequests()
             .antMatchers(
                     "/",
+                    "/index.html",
                     "/webjars/**",
                     "/error**",
                     "/oauth2/authorization/**",

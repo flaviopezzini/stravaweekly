@@ -118,8 +118,13 @@ $.ajaxSetup({
 
 $.get("/athleteToken", function(data) {
   athleteToken = data.accessToken;
-  document.querySelector(".unauthenticated").style.display = "none";
-  document.querySelector(".authenticated").style.display = "block";
+  if (athleteToken) {
+    endDate = getEndDate();
+    startDate = getStartDate(endDate);
+
+    populatePeriod(startDate, endDate);
+    listActivities();
+  }
 });
 
 var logout = function() {
@@ -155,7 +160,11 @@ var populateTable = function(sortedActivityList) {
       var row = document.createElement("tr");
       weeklyGridBody.appendChild(row);
 
-      var durationInSeconds = activity.moving_time;
+      if (activity.sport_type == "Run" && activity.workout_type == 1) {
+        var durationInSeconds = activity.elapsed_time;
+      } else {
+        var durationInSeconds = activity.moving_time;
+      }
 
       var type = activity.type;
 
@@ -254,6 +263,9 @@ var populateTable = function(sortedActivityList) {
     var distanceUnitSuffix = useMetric ? "km" : "mi";
 
     totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
+
+    document.querySelector(".unauthenticated").style.display = "none";
+    document.querySelector(".authenticated").style.display = "block";
 }
 
 var listActivities = function() {
@@ -338,11 +350,6 @@ var populatePeriod = function(startDate, endDate) {
 }
 
 ready(() => {
-  endDate = getEndDate();
-  startDate = getStartDate(endDate);
-
-  populatePeriod(startDate, endDate);
-  listActivities();
 });
 </script>
 

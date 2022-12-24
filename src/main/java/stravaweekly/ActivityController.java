@@ -6,7 +6,6 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -38,8 +37,8 @@ public class ActivityController {
     ZonedDateTime zonedEnd = ZonedDateTime.of(endDate, userZoneId);
 
     final String url = String.format("https://www.strava.com/api/v3/athlete/activities?before=%s&after=%s",
-            (zonedEnd.toInstant().toEpochMilli() / 1000),
-            (zonedStart.toInstant().toEpochMilli() / 1000));
+            zonedEnd.toInstant().toEpochMilli() / 1000,
+            zonedStart.toInstant().toEpochMilli() / 1000);
 
     return requestService.sendGetRequest(auth, url);
   }

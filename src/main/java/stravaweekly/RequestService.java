@@ -38,7 +38,7 @@ public class RequestService {
         OAuth2AuthorizedClient client =
             this.authClientService.loadAuthorizedClient(
                 auth.getAuthorizedClientRegistrationId(), auth.getName());
-
+//client.getRefreshToken()
         return client.getAccessToken().getTokenValue();
     }
 

@@ -76,7 +76,7 @@
     </table>
 
     <div>
-      <h1>Total distance: <span id="totalDistance"></span></h1>
+      <h3>Totals: Time: <span id="totalTime"></span> - Statute: <span id="totalStatute"></span> - Metric: <span id="totalMetric"></span></h3>
     </div>
 
   </div>
@@ -147,8 +147,6 @@ var populateTable = function(sortedActivityList) {
   var weeklyGridBody = document.querySelector("#weeklyGridBody");
     weeklyGridBody.innerHTML = "";
 
-    var totalDistanceEl = document.querySelector("#totalDistance");
-
     var useMetric = document.querySelector("input[type=checkbox]").checked;
 
     var elevationUnitEl = document.querySelector("#elevationUnit");
@@ -156,6 +154,7 @@ var populateTable = function(sortedActivityList) {
     elevationUnitEl.textContent = useMetric ? "m" : "ft";
 
     var totalDistanceInMeters = 0;
+    var totalTimeInSeconds = 0;
 
     sortedActivityList.forEach(activity => {
       var row = document.createElement("tr");
@@ -166,6 +165,8 @@ var populateTable = function(sortedActivityList) {
       } else {
         var durationInSeconds = activity.moving_time;
       }
+
+      totalTimeInSeconds += durationInSeconds;
 
       var type = activity.type;
 
@@ -254,16 +255,12 @@ var populateTable = function(sortedActivityList) {
       row.appendChild(colElevation);
     });
 
-    var totalDistance;
-    if (useMetric) {
-      totalDistance = totalDistanceInMeters / KILOMETER;
-    } else {
-      totalDistance = totalDistanceInMeters / MILE;
-    }
-
-    var distanceUnitSuffix = useMetric ? "km" : "mi";
-
-    totalDistanceEl.textContent = totalDistance.toFixed(2) + distanceUnitSuffix;
+    let totalTime = luxon.Duration.fromMillis(parseInt(totalTimeInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("hh:mm:ss");
+    let totalStatute = totalDistanceInMeters / MILE;
+    let totalMetric = totalDistance = totalDistanceInMeters / KILOMETER;
+    document.querySelector("#totalTime").textContent = totalTime;
+    document.querySelector("#totalStatute").textContent = totalStatute.toFixed(2) + " mi";
+    document.querySelector("#totalMetric").textContent = totalMetric.toFixed(2) + " km";
 
     document.querySelector(".unauthenticated").style.display = "none";
     document.querySelector(".authenticated").style.display = "block";

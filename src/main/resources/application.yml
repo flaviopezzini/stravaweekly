@@ -17,7 +17,8 @@ spring:
             client-authentication-method: post
             authorization-grant-type: authorization_code
             client-name: Strava
-            redirect-uri: "{baseUrl}/login/oauth2/code/strava"
+#            redirect-uri: "https://{baseUrl}/login/oauth2/code/strava"
+            redirect-uri: "https://{baseHost}{basePort}{basePath}/login/oauth2/code/strava"
         provider:
           strava:
             token-uri: https://www.strava.com/oauth/token

@@ -8,12 +8,348 @@
   <meta name="description" content="" />
   <meta name="viewport" content="width=device-width" />
   <base href="/" />
+  <link rel="stylesheet" type="text/css"
+      href="/webjars/bootstrap/css/bootstrap.min.css" />
+  <script type="text/javascript" src="/webjars/jquery/jquery.min.js"></script>
+  <script type="text/javascript" src="/webjars/bootstrap/js/bootstrap.min.js"></script>
+
+  <script src="/webjars/luxon/1.21.2/build/global/luxon.min.js"></script>
 </head>
 
 <body>
 
-The Strava Weekly tool has moved. Please update your bookmarks.
-Click: <a href="https://strava-weekly.fly.dev">here</a> to go to the new tool.
+  <div class="container unauthenticated">
+    <h1>Login</h1>
+    With Strava: <a href="/oauth2/authorization/strava">click here</a>
+  </div>
+
+  <div class="container authenticated" style="display: none">
+
+    <h1>Strava Weekly Generator</h1>
+
+    <div>
+      <input type="checkbox" id="measurementSystem" onchange="handleMetricChange()">Show metric? <br/>
+
+      <button onClick="logout()" class="btn btn-primary">Logout</button>
+    </div>
+
+    <br/>
+
+    <p>Start date is the Monday of the week</p>
+    <p>End date is calculated: If today is Sunday, end date is today, else it computes the Sunday before today</p>
+    <button onClick="showPreviousWeek()" class="btn btn-primary">Previous Week</button>
+    <button onClick="showNextWeek()" class="btn btn-primary">Next Week</button>
+    <h2>Weekly for period: From: <span id="startDateDisplay"></span> To <span id="endDateDisplay"></span></h2>
+
+    <table id="weeklyGrid" class="table table-bordered">
+      <caption>Weekly Grid</caption>
+      <thead>
+        <th scope="col" style="text-align: center;">
+          Date
+        </th>
+        <th scope="col" style="text-align: left;">
+          Name
+        </th>
+        <th scope="col" style="text-align: center;">
+          mi
+        </th>
+        <th scope="col" style="text-align: center;">
+          km
+        </th>
+        <th scope="col" style="text-align: center;">
+          Duration
+        </th>
+        <th scope="col" style="text-align: center;">
+          Avg/mi
+        </th>
+        <th scope="col" style="text-align: center;">
+          Avg/km
+        </th>
+        <th scope="col" style="text-align: center;">
+          Elevation Gain <br/>
+          in <span id="elevationUnit"></span>
+        </th>
+      </thead>
+      <tbody id="weeklyGridBody">
+
+      </tbody>
+    </table>
+
+    <div>
+      <h3>Totals: Time: <span id="totalTime"></span> - 🦅Imperial: <span id="totalStatute"></span> - Metric: <span id="totalMetric"></span></h3>
+    </div>
+
+  </div>
+
+<script type="text/javascript" src="/webjars/js-cookie/js.cookie.js"></script>
+
+<script type="text/javascript">
+// start this empty so it loads the data the first time
+var sortedActivityListCache = null;
+var startDate = null;
+var endDate = null;
+
+var athleteToken = null;
+
+// units
+var KILOMETER = 1000;
+var MILE = 1609;
+var MILLISECONDS_IN_A_SECOND = 1000;
+var METER_TO_FEET_RATIO = 3.28084;
+
+$.ajaxSetup({
+  beforeSend: function(xhr, settings) {
+
+    if (settings.type == 'GET' ||
+        settings.type == 'POST' ||
+        settings.type == 'PUT' ||
+        settings.type == 'DELETE') {
+
+      if (!(/^http:.*/.test(settings.url) ||
+          /^https:.*/.test(settings.url))) {
+
+        // Only send the token to relative URLs i.e. locally.
+        xhr.setRequestHeader("X-XSRF-TOKEN", Cookies.get('XSRF-TOKEN'));
+
+        xhr.setRequestHeader("Authorization", "Bearer " + athleteToken);
+      }
+    }
+  }
+});
+
+$.get("/athleteToken", function(data) {
+  athleteToken = data.accessToken;
+  if (athleteToken) {
+    endDate = getEndDate();
+    startDate = getStartDate(endDate);
+
+    populatePeriod(startDate, endDate);
+    listActivities();
+  }
+});
+
+var logout = function() {
+
+  $.post("/logout", function() {
+    athleteToken = null;
+    document.querySelector(".unauthenticated").style.display = "block";
+    document.querySelector(".authenticated").style.display = "none";
+  });
+
+  return true;
+}
+
+var getDateForSort = function(dateString) {
+  return new Date(dateString.substring(0, dateString.length - 1));
+}
+
+var populateTable = function(sortedActivityList) {
+  var weeklyGridBody = document.querySelector("#weeklyGridBody");
+    weeklyGridBody.innerHTML = "";
+
+    var useMetric = document.querySelector("input[type=checkbox]").checked;
+
+    var elevationUnitEl = document.querySelector("#elevationUnit");
+
+    elevationUnitEl.textContent = useMetric ? "m" : "ft";
+
+    var totalDistanceInMeters = 0;
+    var totalTimeInSeconds = 0;
+
+    sortedActivityList.forEach(activity => {
+      var row = document.createElement("tr");
+      weeklyGridBody.appendChild(row);
+
+      if (activity.sport_type == "Run" && activity.workout_type == 1) {
+        var durationInSeconds = activity.elapsed_time;
+      } else {
+        var durationInSeconds = activity.moving_time;
+      }
+
+      totalTimeInSeconds += durationInSeconds;
+
+      var type = activity.type;
+
+      var distanceMi = activity.distance / MILE;
+      distanceMi = distanceMi.toFixed(2);
+      var distanceKm = activity.distance / KILOMETER;
+      distanceKm = distanceKm.toFixed(2);
+
+      var activityDate;
+      var elevation;
+
+      if (useMetric) {
+        activityDate =
+          activity.start_date_local.substring(8,10) + "/" +
+          activity.start_date_local.substring(5,7);
+        elevation = parseInt(activity.total_elevation_gain);
+      } else {
+        activityDate =
+          activity.start_date_local.substring(5,7) + "/" +
+          activity.start_date_local.substring(8,10);
+        elevation = parseInt(activity.total_elevation_gain) * METER_TO_FEET_RATIO;
+        elevation = elevation.toFixed(0);
+      }
+
+      var floatDistanceInMeters = parseFloat(activity.distance);
+      if (type != "Ride" && type != "Swim") {
+        totalDistanceInMeters += floatDistanceInMeters;
+      }
+
+      var averagePaceMi = "00:00";
+      var averagePaceKm = "00:00";
+      if (activity.distance > 0) { // weight workouts etc don't have a distance
+        var averagePaceInSecondsMi = durationInSeconds / distanceMi;
+        var averagePaceInSecondsKm = durationInSeconds / distanceKm;
+        averagePaceInSecondsMi = averagePaceInSecondsMi.toFixed(0);
+        averagePaceInSecondsKm = averagePaceInSecondsKm.toFixed(0);
+        averagePaceMi = luxon.Duration.fromMillis(parseInt(averagePaceInSecondsMi) * MILLISECONDS_IN_A_SECOND)
+           .toFormat("mm:ss");
+        averagePaceKm = luxon.Duration.fromMillis(parseInt(averagePaceInSecondsKm) * MILLISECONDS_IN_A_SECOND)
+           .toFormat("mm:ss");
+      }
+
+      var colDate = document.createElement("td");
+      colDate.style.textAlign = "center";
+      colDate.textContent = activityDate;
+      row.appendChild(colDate);
+
+      var activityUrl = document.createElement("a");
+      activityUrl.textContent = activity.name;
+      activityUrl.href = "https://www.strava.com/activities/" + activity.id;
+      activityUrl.target= "_blank";
+
+      var colNameLink = document.createElement("td");
+      colNameLink.style.textAlign = "left";
+      colNameLink.appendChild(activityUrl);
+      row.appendChild(colNameLink);
+
+      var colDistanceMi = document.createElement("td");
+      colDistanceMi.style.textAlign = "center";
+      colDistanceMi.textContent = distanceMi;
+      row.appendChild(colDistanceMi);
+
+      var colDistanceKm = document.createElement("td");
+      colDistanceKm.style.textAlign = "center";
+      colDistanceKm.textContent = distanceKm;
+      row.appendChild(colDistanceKm);
+
+      var colDuration = document.createElement("td");
+      colDuration.style.textAlign = "center";
+      colDuration.textContent = luxon.Duration.fromMillis(parseInt(durationInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("hh:mm:ss");
+      row.appendChild(colDuration);
+
+      var colAveragePaceMi = document.createElement("td");
+      colAveragePaceMi.style.textAlign = "center";
+      colAveragePaceMi.textContent = averagePaceMi;
+      row.appendChild(colAveragePaceMi);
+
+      var colAveragePaceKm = document.createElement("td");
+      colAveragePaceKm.style.textAlign = "center";
+      colAveragePaceKm.textContent = averagePaceKm;
+      row.appendChild(colAveragePaceKm);
+
+      var colElevation = document.createElement("td");
+      colElevation.style.textAlign = "center";
+      colElevation.textContent = elevation;
+      row.appendChild(colElevation);
+    });
+
+    let totalTime = luxon.Duration.fromMillis(parseInt(totalTimeInSeconds) * MILLISECONDS_IN_A_SECOND).toFormat("hh:mm:ss");
+    let totalStatute = totalDistanceInMeters / MILE;
+    let totalMetric = totalDistance = totalDistanceInMeters / KILOMETER;
+    document.querySelector("#totalTime").textContent = totalTime;
+    document.querySelector("#totalStatute").textContent = totalStatute.toFixed(2) + " mi";
+    document.querySelector("#totalMetric").textContent = totalMetric.toFixed(2) + " km";
+
+    document.querySelector(".unauthenticated").style.display = "none";
+    document.querySelector(".authenticated").style.display = "block";
+}
+
+var listActivities = function() {
+
+  if (sortedActivityListCache) {
+    populateTable(sortedActivityListCache);
+  } else {
+    var userTimezoneOffsetInHours = parseInt(luxon.DateTime.local().offset / 60);
+    var listAthleteActivitiesUrl = "/athlete/activities" +
+      "?userTimezoneOffsetInHours=" + userTimezoneOffsetInHours +
+      "&startDate=" + formatDateParameterToISOFormat(startDate) + "00:00:00.000" +
+      "&endDate=" + formatDateParameterToISOFormat(endDate) + "23:59:59.999";
+
+    $.get(listAthleteActivitiesUrl, function(activityList) {
+      sortedActivityListCache = activityList.sort((a, b) => getDateForSort(a.start_date_local) - getDateForSort(b.start_date_local));
+      populateTable(sortedActivityListCache);
+    });
+  }
+}
+
+var getEndDate = function() {
+  var endDate = luxon.DateTime.local();
+
+  var dayOfWeek = endDate.weekday;
+  const SUNDAY = 7;
+  if (dayOfWeek != SUNDAY) {
+    endDate = endDate.minus({days: dayOfWeek});
+  }
+
+  return endDate;
+}
+
+var getStartDate = function(endDate) {
+  return endDate.minus({days: 6});
+}
+
+var showPreviousWeek = function() {
+  startDate = startDate.minus({days: 7});
+  endDate = endDate.minus({days: 7});
+  populatePeriod(startDate, endDate);
+
+  sortedActivityListCache = null;
+  listActivities();
+}
+
+var showNextWeek = function() {
+  startDate = startDate.plus({days: 7});
+  endDate = endDate.plus({days: 7});
+
+  populatePeriod(startDate, endDate);
+  sortedActivityListCache = null;
+  listActivities();
+}
+
+var ready = (callback) => {
+  if (document.readyState != "loading") callback();
+  else document.addEventListener("DOMContentLoaded", callback);
+}
+
+var formatPeriodDate = function(date, isMetric) {
+  if (isMetric) {
+    return date.toFormat('dd/MM/yyyy');
+  } else {
+    return date.toFormat('MM/dd/yyyy');
+  }
+}
+
+var handleMetricChange = function() {
+  populatePeriod(startDate, endDate);
+  listActivities();
+}
+
+var formatDateParameterToISOFormat = function(date) {
+  return date.toFormat("yyyy-MM-dd'T'");
+}
+
+var populatePeriod = function(startDate, endDate) {
+  var isMetric = document.querySelector("input[type=checkbox]").checked;
+
+  document.querySelector("#startDateDisplay").innerText = formatPeriodDate(startDate, isMetric);
+  document.querySelector("#endDateDisplay").innerText = formatPeriodDate(endDate, isMetric);
+}
+
+ready(() => {
+});
+</script>
 
 </body>
 

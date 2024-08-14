@@ -1,7 +1,5 @@
 #FROM amazoncorretto:17
-#FROM gcr.io/distroless/java17
-#FROM openjdk:17-jre-slim
-FROM amazoncorretto:8u422-alpine3.17-jre
+FROM eclipse-temurin:17-jre-alpine
 
 ADD target/strava-weekly-0.0.1.jar /home/server.jar
 
